@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Disk management</title>
+</head>
+<body style = "padding-left: 100px;">
+<h2>Lập lịch ổ đĩa</h2>
+<p>Hãy nhập vị trí hiện tại trên trục rãnh, điểm đầu của ổ đĩa và điểm cuối của ổ đĩa.</p>
+<input type="text" id="diskParamsInput" placeholder="VD: 10 0 499" style="width: 200px;">
+<p>Hãy nhập hướng xoay của ổ đĩa hiện tại (LEFT: giảm dần, RIGHT: tăng dần) dùng cho các thuật toán LOOK, SCAN.</p>
+<select id = "direction">
+    <option value="LEFT">LEFT</option>
+    <option value="RIGHT">RIGHT</option>
+</select>
+<p>Hãy nhập hàng đợi, mỗi số cách nhau bởi dấu cách.</p>
+<input type="text" id="queueInput" placeholder="VD: 10 100 99 101" style="width: 200px;">
+<select id="algorithmSelect">
+  <option value="FCFS">FCFS</option>
+  <option value="SSTF">SSTF</option>
+  <option value="SCAN">SCAN</option>
+  <option value="C-SCAN">C-SCAN</option>
+  <option value="C-LOOK">C-LOOK</option>
+</select>
+<button onclick="calculate()">Tính</button>
+<br><br>
+<div id="result"></div>
+
+<script>
+function calculateFCFS(queue, currentPosition, startDisk, endDisk) {
+    var totalAccesses = 0;
+    var path = currentPosition;
+    for (var i = 0; i < queue.length; i++) {
+        totalAccesses = totalAccesses + Math.abs(queue[i] - currentPosition);
+        path = path + " - " + queue[i];
+        currentPosition = queue[i];
+    }
+    
+    // Hiển thị kết quả trên màn hình
+    document.getElementById("result").innerHTML = "Tổng chi phí: " + totalAccesses + "<br>Đường đi: " + path;
+}
+
+function calculateSSTF(queue, currentPosition, startDisk, endDisk) {
+    var totalAccesses = 0;
+    var path = currentPosition;
+
+    while (queue.length > 0) {
+        // Tạo một mảng distance chứa khoảng cách từ currentPosition đến từng ô trong queue
+        var distance = [];
+        for (var i = 0; i < queue.length; i++) {
+            distance[i] = Math.abs(currentPosition - queue[i]);
+        }
+
+        // Tìm vị trí của ô có khoảng cách ngắn nhất trong mảng distance
+        var minIndex = 0;
+        var minDistance = distance[0];
+        for (var j = 1; j < distance.length; j++) {
+            if (distance[j] < minDistance) {
+                minIndex = j;
+                minDistance = distance[j];
+            }
+        }
+
+        // Cộng thêm khoảng cách ngắn nhất vào tổng số lượng truy cập
+        totalAccesses += minDistance;
+
+        // Thêm ô này vào đường đi
+        path = path + " - " + queue[minIndex];
+
+        // Cập nhật vị trí hiện tại
+        currentPosition = queue[minIndex];
+
+        // Loại bỏ ô đã được chọn ra khỏi hàng đợi
+        queue.splice(minIndex, 1);
+    }
+
+    // Hiển thị kết quả trên màn hình
+    document.getElementById("result").innerHTML = "Tổng chi phí: " + totalAccesses + "<br>Đường đi: " + path;
+}
+
+
+function calculateSCAN(queue, currentPosition, startDisk, endDisk, direction) {
+    var totalAccesses = 0;
+    var path = currentPosition;
+    
+    if (direction === "LEFT") {
+        // Tạo mảng left chứa các phần tử nhỏ hơn hoặc bằng currentPosition từ hàng đợi
+        var left = queue.filter(item => item <= currentPosition).sort((a, b) => b - a);
+        // Thêm phần tử cuối cùng là startDisk vào mảng left
+        left.push(startDisk);
+        // Tạo mảng right chứa các phần tử lớn hơn currentPosition từ hàng đợi
+        var right = queue.filter(item => item > currentPosition).sort((a, b) => a - b);
+        
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới đầu ổ đĩa theo hướng trái
+        for (var i = 0; i < left.length; i++) {
+            totalAccesses += Math.abs(currentPosition - left[i]);
+            path += " - " + left[i];
+            currentPosition = left[i];
+        }
+        
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới cuối ổ đĩa theo hướng trái
+        for (var j = 0; j < right.length; j++) {
+            totalAccesses += Math.abs(currentPosition - right[j]);
+            path += " - " + right[j];
+            currentPosition = right[j];
+        }
+    } else if (direction === "RIGHT") {
+        // Tạo mảng left chứa các phần tử nhỏ hơn hoặc bằng currentPosition từ hàng đợi
+        var left = queue.filter(item => item < currentPosition).sort((a, b) => b - a);
+        // Tạo mảng right chứa các phần tử lớn hơn hoặc bằng currentPosition từ hàng đợi
+        var right = queue.filter(item => item >= currentPosition).sort((a, b) => a - b);
+        // Thêm phần tử cuối cùng là endDisk vào mảng right
+        right.push(endDisk);
+        
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới cuối ổ đĩa theo hướng phải
+        for (var k = 0; k < right.length; k++) {
+            totalAccesses += Math.abs(currentPosition - right[k]);
+            path += " - " + right[k];
+            currentPosition = right[k];
+        }
+        
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới đầu ổ đĩa theo hướng phải
+        for (var l = 0; l < left.length; l++) {
+            totalAccesses += Math.abs(currentPosition - left[l]);
+            path += " - " + left[l];
+            currentPosition = left[l];
+        }
+    }
+
+    // Hiển thị kết quả trên màn hình
+    document.getElementById("result").innerHTML = "Tổng chi phí: " + totalAccesses + "<br>Đường đi: " + path;
+}
+
+
+function calculateSCAN(queue, currentPosition, startDisk, endDisk, direction) {
+    var totalAccesses = 0;
+    var path = currentPosition;
+    
+    if (direction === "LEFT") {
+        // Tạo mảng left chứa các phần tử nhỏ hơn hoặc bằng currentPosition từ hàng đợi
+        var left = queue.filter(item => item <= currentPosition).sort((a, b) => b - a);
+        // Thêm phần tử cuối cùng là startDisk vào mảng left
+        left.push(startDisk);
+        // Tạo mảng right chứa các phần tử lớn hơn currentPosition từ hàng đợi
+        var right = queue.filter(item => item > currentPosition).sort((a, b) => a - b);
+        
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới đầu ổ đĩa theo hướng trái
+        for (var i = 0; i < left.length; i++) {
+            totalAccesses += Math.abs(currentPosition - left[i]);
+            path += " - " + left[i];
+            currentPosition = left[i];
+        }
+        
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới cuối ổ đĩa theo hướng trái
+        for (var j = 0; j < right.length; j++) {
+            totalAccesses += Math.abs(currentPosition - right[j]);
+            path += " - " + right[j];
+            currentPosition = right[j];
+        }
+    } else if (direction === "RIGHT") {
+        // Tạo mảng left chứa các phần tử nhỏ hơn hoặc bằng currentPosition từ hàng đợi
+        var left = queue.filter(item => item < currentPosition).sort((a, b) => b - a);
+        // Tạo mảng right chứa các phần tử lớn hơn hoặc bằng currentPosition từ hàng đợi
+        var right = queue.filter(item => item >= currentPosition).sort((a, b) => a - b);
+        // Thêm phần tử cuối cùng là endDisk vào mảng right
+        right.push(endDisk);
+        
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới cuối ổ đĩa theo hướng phải
+        for (var k = 0; k < right.length; k++) {
+            totalAccesses += Math.abs(currentPosition - right[k]);
+            path += " - " + right[k];
+            currentPosition = right[k];
+        }
+        
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới đầu ổ đĩa theo hướng phải
+        for (var l = 0; l < left.length; l++) {
+            totalAccesses += Math.abs(currentPosition - left[l]);
+            path += " - " + left[l];
+            currentPosition = left[l];
+        }
+    }
+
+    // Hiển thị kết quả trên màn hình
+    document.getElementById("result").innerHTML = "Tổng chi phí: " + totalAccesses + "<br>Đường đi: " + path;
+}
+
+
+function calculateCSCAN(queue, currentPosition, startDisk, endDisk, direction) {
+    var totalAccesses = 0;
+    var path = currentPosition;
+
+    if (direction === "LEFT") {
+        // Tạo mảng less chứa các phần tử nhỏ hơn hoặc bằng currentPosition từ hàng đợi, sắp xếp từ lớn đến bé
+        var less = queue.filter(item => item <= currentPosition).sort((a, b) => b - a);
+        // Thêm phần tử cuối cùng là startDisk vào mảng less
+        less.push(startDisk);
+        // Tạo mảng big chứa các phần tử lớn hơn currentPosition từ hàng đợi, sắp xếp từ lớn đến bé
+        var big = queue.filter(item => item > currentPosition).sort((a, b) => b - a);
+        big.unshift(endDisk);
+
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới đầu ổ đĩa theo hướng trái
+        for (var i = 0; i < less.length; i++) {
+            totalAccesses += Math.abs(currentPosition - less[i]);
+            path += " - " + less[i];
+            currentPosition = less[i];
+        }
+
+        if (big.length > 1) {
+            path += "; " + big[0];
+            currentPosition = big[0];
+        }
+
+        // Di chuyển ổ đĩa từ phần tử thứ hai của mảng big đến cuối ổ đĩa theo hướng trái
+        for (var j = 1; j < big.length; j++) {
+            totalAccesses += Math.abs(currentPosition - big[j]);
+            path += " - " + big[j];
+            currentPosition = big[j];
+        }
+    } else if (direction === "RIGHT") {
+        // Tạo mảng less chứa các phần tử nhỏ hơn hoặc bằng currentPosition từ hàng đợi, sắp xếp từ bé đến lớn
+        var less = queue.filter(item => item < currentPosition).sort((a, b) => a - b);
+        less.unshift(startDisk);
+
+        // Tạo mảng big chứa các phần tử lớn hơn hoặc bằng currentPosition từ hàng đợi, sắp xếp từ bé đến lớn
+        var big = queue.filter(item => item >= currentPosition).sort((a, b) => a - b);
+        // Thêm phần tử cuối cùng là endDisk vào mảng big
+        big.push(endDisk);
+
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới cuối ổ đĩa theo hướng phải
+        for (var k = 0; k < big.length; k++) {
+            totalAccesses += Math.abs(currentPosition - big[k]);
+            path += " - " + big[k];
+            currentPosition = big[k];
+        }
+
+        if (less.length > 1) {
+            path += "; " + less[0];
+            currentPosition = less[0];
+        }
+
+        // Di chuyển ổ đĩa từ phần tử thứ hai của mảng less đến đầu ổ đĩa theo hướng phải
+        for (var l = 1; l < less.length; l++) {
+            totalAccesses += Math.abs(currentPosition - less[l]);
+            path += " - " + less[l];
+            currentPosition = less[l];
+        }
+    }
+
+    // Hiển thị kết quả trên màn hình
+    document.getElementById("result").innerHTML = "Tổng chi phí: " + totalAccesses + "<br>Đường đi: " + path;
+}
+
+
+function calculateCLOOK(queue, currentPosition, startDisk, endDisk, direction) {
+    var totalAccesses = 0;
+    var path = currentPosition;
+
+    if (direction === "LEFT") {
+        // Tạo mảng less chứa các phần tử nhỏ hơn hoặc bằng currentPosition từ hàng đợi, sắp xếp từ lớn đến bé
+        var less = queue.filter(item => item <= currentPosition).sort((a, b) => b - a);
+        // Thêm phần tử cuối cùng là startDisk vào mảng less
+        
+        // Tạo mảng big chứa các phần tử lớn hơn currentPosition từ hàng đợi, sắp xếp từ lớn đến bé
+        var big = queue.filter(item => item > currentPosition).sort((a, b) => b - a);
+       
+
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới đầu ổ đĩa theo hướng trái
+        for (var i = 0; i < less.length; i++) {
+            totalAccesses += Math.abs(currentPosition - less[i]);
+            path += " - " + less[i];
+            currentPosition = less[i];
+        }
+
+        if(big.length > 0) {
+            path += "; " + big[0];
+            currentPosition = big[0];
+        }
+
+        // Di chuyển ổ đĩa từ phần tử thứ hai của mảng big đến cuối ổ đĩa theo hướng trái
+        for (var j = 1; j < big.length; j++) {
+            totalAccesses += Math.abs(currentPosition - big[j]);
+            path += " - " + big[j];
+            currentPosition = big[j];
+        }
+    } else if (direction === "RIGHT") {
+        // Tạo mảng less chứa các phần tử nhỏ hơn hoặc bằng currentPosition từ hàng đợi, sắp xếp từ bé đến lớn
+        var less = queue.filter(item => item < currentPosition).sort((a, b) => a - b);
+       
+
+        // Tạo mảng big chứa các phần tử lớn hơn hoặc bằng currentPosition từ hàng đợi, sắp xếp từ bé đến lớn
+        var big = queue.filter(item => item >= currentPosition).sort((a, b) => a - b);
+        // Thêm phần tử cuối cùng là endDisk vào mảng big
+       
+
+        // Di chuyển ổ đĩa từ vị trí hiện tại tới cuối ổ đĩa theo hướng phải
+        for (var k = 0; k < big.length; k++) {
+            totalAccesses += Math.abs(currentPosition - big[k]);
+            path += " - " + big[k];
+            currentPosition = big[k];
+        }
+
+        if (less.length > 0) {
+            path += "; " + less[0];
+            currentPosition = less[0];
+        }
+
+        // Di chuyển ổ đĩa từ phần tử thứ hai của mảng less đến đầu ổ đĩa theo hướng phải
+        for (var l = 1; l < less.length; l++) {
+            totalAccesses += Math.abs(currentPosition - less[l]);
+            path += " - " + less[l];
+            currentPosition = less[l];
+        }
+    }
+
+    // Hiển thị kết quả trên màn hình
+    document.getElementById("result").innerHTML = "Tổng chi phí: " + totalAccesses + "<br>Đường đi: " + path;
+}
+
+function calculate() {
+    var diskParamsInput = document.getElementById("diskParamsInput").value;
+    var params = diskParamsInput.split(" ").map(item => parseInt(item.trim()));
+
+    var currentPosition = params[0];
+    var startDisk = params[1];
+    var endDisk = params[2];
+    
+    var queueInput = document.getElementById("queueInput").value;
+    var queue = queueInput.split(" ").map(Number);
+    var direction = document.getElementById("direction").value;
+
+    var algorithm = document.getElementById("algorithmSelect").value;
+
+    switch (algorithm) {
+        case "FCFS":
+            calculateFCFS(queue, currentPosition, startDisk, endDisk);
+            break;
+        case "SSTF":
+            calculateSSTF(queue, currentPosition, startDisk, endDisk);
+            break;
+        case "SCAN":
+            calculateSCAN(queue, currentPosition, startDisk, endDisk, direction);
+            break;
+        case "C-SCAN":
+            calculateCSCAN(queue, currentPosition, startDisk, endDisk, direction);
+            break;
+        case "C-LOOK":
+            calculateCLOOK(queue, currentPosition, startDisk, endDisk, direction);
+            break;
+    }
+}
+</script>
+
+</body>
+</html>
